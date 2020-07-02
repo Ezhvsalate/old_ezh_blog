@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Записная книжка ежа - Шпаргалка по SQL*Plus</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/7.0.0/normalize.min.css"/>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
+    <link href="https://fonts.googleapis.com/css?family=Exo+2" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/theme/css/main.css"/>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/zenburn.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+<meta name="tags" content="ansible" />
+</head>
+<body>
+<style>.github-corner:hover .octo-arm {
+    animation: octocat-wave 560ms ease-in-out
+}
+@keyframes octocat-wave {
+    0%, 100% {
+        transform: rotate(0)
+    }
+    20%, 60% {
+        transform: rotate(-25deg)
+    }
+    40%, 80% {
+        transform: rotate(10deg)
+    }
+}
+@media (max-width: 500px) {
+    .github-corner:hover .octo-arm {
+        animation: none
+    }
+
+    .github-corner .octo-arm {
+        animation: octocat-wave 560ms ease-in-out
+    }
+}</style><div id="container">
+    <header>
+        <h1 style="margin-bottom: 0"><a href="/"><img src="/theme/images/logo3.svg" style="width: 120px; box-shadow: None;" alt="logo"/> Записная книжка ежа</a></h1>
+        <ul class="social-media">
+            <li><a href="https://github.com/Ezhvsalate"><i class="fa fa-github fa-lg" aria-hidden="true"></i></a></li>
+        </ul>
+        <!--        <p style="margin-top: 0; margin-left: 120px;"><em>Еж иголки спрятатать не может</em></p>-->
+    </header>
+    <nav>
+        <ul>
+            <li><a                    class="active" href="/category/posty.html"> Посты </a></li>
+            <li><a href="/about">О блоге</a>
+            </li>
+        </ul>
+    </nav>
+<main>
+    <article>
+        <h2>Шпаргалка по SQL*Plus</h2>
+        
+        <aside>
+            <ul>
+                <li>
+                    Опубликовано: <time datetime="2017-10-24 08:34:50+03:00">24 окт 2017</time>
+                </li>
+                <li>Время прочтения: 4 мин</li>
+                <li>
+                    Tags:
+                    <a href="/tag/ansible.html"><em>#ansible</em></a>
+                </li>
+            </ul>
+        </aside>
+        
+<p>SQL*Plus - программа для работы с СУБД Oracle посредством командной строки. Используя SQL*Plus можно выполнять команды SQL и PL/SQL в интерактивном режиме или используя&nbsp;сценарий.</p>
+
+<p>Основное преимущество SLQ*Plus - доступность, т.к. инструмент доступен практически всегда, когда в системе установлен Oracle. При этом это достаточно мощный инструмент, используя который можно
+    решать различные задачи&nbsp;&nbsp;на удаленных машинах.</p>
+
+<p>К написанию этой статьи меня подтолкнула книга &quot;<a href="http://shop.oreilly.com/product/9780596007461.do">Oracle SQL*Plus: The Definitive Guide, 2nd Edition</a>&quot;, написанная&nbsp;Jonathan
+    Gennick. Как обычно, появилось желание систематизировать информацию и представить ее в удобном виде.</p>
+
+<p>При этом сразу считаю нужным оговориться, что я использую SQLplus для написания и выполнения скриптов на удаленных машинах, в этой статье описываю именно используемые для этого команды.</p>
+
+<p>Область возможного использования SQLplus при этом гораздо шире, например - построение&nbsp;отчетов, в том числе в формате HTML.&nbsp;</p>
+
+<h2><a id="ch1">Параметры, подключение к базе, запуск скриптов</a></h2>
+
+<pre>
+<code>sqlplus /nolog   - запуск без интерактивного запроса логина/пароля для входа
+        -S       - молчаливый режим
+        -L       - только одна попытка входа в интерактиве
+        -V       - показать версию SQLplus
+        -H       - отобразить справку
+
+
+CONNECT gennick@db01   - присоединиться к базе, запросит пароль в интерактиве
+HOST                   - переключиться на командную строку операционной системы, не разрывая соединения с базой (exit - вернет в SQLplus)
+
+sqlplus user/pass@db @script.sql             - присоединиться к базе и выполнить скрипт
+sqlplus user/pass@db @script.sql arg "arg"   - выполнить скрипт с аргументами (будут доступны как &amp;1, &amp;2)</code></pre>
+
+<p>Выполнить несколько строк кода (не передавая отдельный файл со скриптом), unix:</p>
+
+<pre>
+<code>sqlplus -s user/password@db_name &lt;&lt;+EOF
+update table set value = 'foo' where id=1;
+update table set value = 'bar' where id=2;
+commit;
++EOF </code></pre>
+
+<h2><a id="ch2">Выполнение SQL запросов</a></h2>
+
+<p>Запрос может состоять из нескольких строк, содержать комментарии, но не может содержать внутри пустые строки.</p>
+
+<pre>
+<code class="language-sql">SQL&gt; SELECT * /* All columns */
+2 FROM project;</code></pre>
+
+<p>Запрос может быть выполнен тремя способами:</p>
+
+<ul>
+    <li>&nbsp; точка с запятой в конце запроса</li>
+</ul>
+
+<pre>
+<code class="language-sql">SQL&gt; INSERT INTO project
+2 /* All columns */
+3 (project_id, project_name, project_budget)
+4 VALUES (1006,'Mainframe Upgrade',456789)
+5 ;</code></pre>
+
+<ul>
+    <li>строка с слешем &quot;/&quot; после запроса</li>
+</ul>
+
+<pre>
+<code class="language-sql">SQL&gt; UPDATE project
+2 SET project_budget = 1000000
+3 WHERE project_id = 1006
+4 /</code></pre>
+
+<ul>
+    <li>&nbsp;пустая строка после запроса (будет помещен в буфер, но не выполнен немедленно)</li>
+</ul>
+
+<pre>
+<code class="language-sql">SQL&gt; DELETE
+2 FROM project
+3 WHERE project_id = 1006
+4
+SQL&gt;
+SQL&gt; /
+1 row deleted.</code></pre>
+
+<h2><a id="ch3">Выполнение PL/SQL блоков</a></h2>
+
+<p>Пример PL/SQL блока:</p>
+
+<pre>
+<code class="language-sql">SQL&gt; DECLARE
+2         X VARCHAR2(12) := 'Hello World!';
+3    BEGIN
+4         DBMS_OUTPUT.PUT_LINE(X);
+5    EXCEPTION
+6    WHEN OTHERS THEN
+7         DBMS_OUTPUT.PUT_LINE('An error occurred.');
+8    END;
+9 /
+PL/SQL procedure successfully completed.</code></pre>
+
+<p>Правила выполнения PL/SQL блоков:</p>
+
+<ul>
+    <li>Первое слово в PL/SQL блоке&nbsp;должно быть из списка:&nbsp;BEGIN, DECLARE, CREATE PROCEDURE,<br />
+        CREATE FUNCTION, CREATE TRIGGER, CREATE PACKAGE, CREATE TYPE,&nbsp;CREATE TYPE BODY. Регистр не важен.
+    </li>
+    <li>Блок может состоять из нескольких строк</li>
+    <li>Можно вставлять&nbsp; /* комментарии */, они также могут быть на несколько строк</li>
+    <li>Пустые строки не разрешены внутри блока</li>
+</ul>
+
+<p>Сигнал к выполнению блока может быть подан&nbsp;двумя путями:</p>
+
+<ul>
+    <li>Строка, содержащая только слеш &quot;/&quot; после блока - выполнить сразу</li>
+</ul>
+
+<pre>
+<code>SQL&gt; BEGIN
+2 NULL;
+3 END;
+4 /</code></pre>
+
+<ul>
+    <li>Строка, содержащая точку &quot;.&quot; после блока - поместить в буфер. Содержимое буфера может быть выведено командой LIST и выполнено, путем указания одиночного слеша &quot;/&quot; или
+        команды RUN.
+    </li>
+</ul>
+
+<pre>
+<code class="language-sql">SQL&gt; BEGIN
+2 NULL;
+3 END;
+4 .</code></pre>
+
+<p>Одиночное выражение PL/SQL может быть выполнено, используя:</p>
+
+<pre>
+<code class="language-sql">EXECUTE plsql_statement</code></pre>
+
+<p>Например, так:</p>
+
+<pre>
+<code class="language-sql">SQL&gt; EXECUTE DBMS_OUTPUT.ENABLE(10000)
+PL/SQL procedure successfully completed.</code></pre>
+
+<p>&nbsp;</p>
+
+<p>В случае ошибок, при выполнении процедуры, можно отобразить их выполнив команду:</p>
+
+<pre>
+<code>SHOW ERRORS</code></pre>
+
+<h2><a id="ch4">Работа с переменными</a></h2>
+
+<p>Переменные могут быть заданы двумя способами:</p>
+
+<pre>
+<code>&amp;variable  - переменная в скрипте, будет запрошена каждый раз когда встретится в ходе выполнения
+&amp;&amp;variable - переменная в скрипте, будет запрошена один раз и сохранена на всю сессию работы с SQLplus
+</code></pre>
+
+<p>Если уже была определена &amp;&amp;variable, то значение будет подставлено во все дальнейшие переменные как &amp;variable так и &amp;&amp;variable.</p>
+
+<p>Если была определена &amp;&amp;variable, и скрипт запущен повтороно в ходе той же сессии работы с SQLplus - будет использовано старое значение переменной. Чтобы этого избежать - можно запрашивать
+    интерактивный ввод в скрипте принудительно, испольтзуя команду:</p>
+
+<pre>
+<code>ACCEPT table_name CHAR PROMPT 'Enter the table name &gt;'</code></pre>
+
+<p>ACCEPT можно использовать для валидации:</p>
+
+<pre>
+<code class="language-sql">SQL&gt; ACCEPT my_variable NUMBER FORMAT 999 PROMPT 'Enter a number &gt;'
+
+Enter a number &gt;1234
+
+"1234" does not match input format "999"
+
+Enter a number &gt;123
+SQL&gt;</code></pre>
+
+<p>Для ввода дат в определенном формате:</p>
+
+<pre>
+<code>ACCEPT my_variable DATE FORMAT 'MM/DD/YY' PROMPT 'Give me a date &gt;'</code></pre>
+
+<p>SQL*Plus поддерживает четыре типа переменных: CHAR, NUMBER, BINARY_FLOAT, and BINARY_DOUBLE. При вводе с клавиатуры переменная будет типа&nbsp;CHAR.</p>
+
+<p>Несмотря на это, можно использовать NEW_VALUE, чтобы задать числовую переменную, полученную как результат запроса.</p>
+
+<pre>
+<code class="language-sql">SQL&gt; COLUMN x NEW_VALUE m y_age
+SQL&gt; SELECT 42 x FROM dual;
+X
+----------
+42
+SQL&gt; DEFINE my_age
+DEFINE MY_AGE = 42 (NUMBER)</code></pre>
+
+<p>Bind-переменные могут использоваться для передачи данных между PL/SQL и SQL блоками:</p>
+
+<pre>
+<code class="language-sql">-- Bind-переменные могут быть определены в скрипте
+VARIABLE s_table_name varchar2(30)
+
+-- Можно ссылаться на bind-переменные в PL/SQL block.
+BEGIN
+   :s_table_name := 'EMPLOYEE';
+END;
+/
+
+-- Bind-переменные могут быть использованы и в SQL запросах.
+SELECT index_name FROM user_indexes WHERE table_name = :s_table_name;
+
+-- Bind-переменные хранятся до выхода из SQL*Plus и могут быть использованы в нескольких PL/SQL блоках.
+
+SET SERVEROUTPUT ON
+BEGIN
+DBMS_OUTPUT.PUT_LINE(:s_table_name);
+END;
+/</code></pre>
+
+<p>Присвоить bind-переменной значение &amp;-переменной:</p>
+
+<pre>
+<code class="language-sql">DEFINE my_sub_num = 9
+VARIABLE my_bind_num NUMBER
+EXECUTE :my_bind_num := &amp;my_sub_num;</code></pre>
+
+<p>Вывести значение bind-переменной:</p>
+
+<pre>
+<code>SQL&gt; VAR my_bind_var VARCHAR2(35)
+SQL&gt; EXECUTE :my_bind_var := 'Brighten the corner where you are';
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; PRINT my_bind_var
+
+MY_BIND_VAR
+-----------------------------------------------------------------
+Brighten the corner where you are</code></pre>
+
+<p>Присвоить &amp;-переменной значение bind-переменной:</p>
+
+<pre>
+<code>SQL&gt; DEFINE my_sub_var = ' '
+SQL&gt; VAR my_bind_var VARCHAR2(35)
+SQL&gt; EXECUTE :my_bind_var := 'Brighten the corner where you are';
+
+PL/SQL procedure successfully completed.
+
+SQL&gt; COLUMN my_bind_var NEW_VALUE my_sub_var
+SQL&gt; PRINT my_bind_var
+
+MY_BIND_VAR
+----------------------------------------------------------------------
+Brighten the corner where you are
+
+SQL&gt; PROMPT &amp;my_sub_var
+Brighten the corner where you are</code></pre>
+
+<p>Получаем OUT-параметр процедуры в bind-переменную:</p>
+
+<pre>
+<code class="language-sql">ACCEPT not_can CHAR PROMPT 'Enter a table reference &gt;'
+
+VARIABLE can VARCHAR2(60)
+
+EXECUTE DBMS_UTILITY.CANONICALIZE('&amp;not_can',:can, 60);
+
+COLUMN can HEADING 'Canonicalized Reference IS:'
+
+PRINT can</code></pre>
+
+<p>Условное выполнение в SQLplus:</p>
+
+<pre>
+<code>ACCEPT s_delete_confirm PROMPT 'Delete project hours data (Y/N)?'
+
+DELETE FROM project_hours WHERE UPPER('&amp;&amp;s_delete_confirm') = 'Y';</code></pre>
+
+<p>Пример скрипта, принимающего несколько переменных на вход в формате c возможностью задать дефолтные значения:</p>
+
+<pre>
+<code>sqlplus user/pass@db @script.sql "var=foo; othervar=bar;"   </code></pre>
+
+<pre>
+<code class="language-sql">prompt Define parameters
+define script_param = ""
+column col_script_param new_value script_param noprint
+select replace(trim('&amp;&amp;1'), ' ') "col_script_param" from dual;
+undef 1
+
+
+define parse_name_parameter = "var="
+select nvl(max(regexp_replace(csv,
+                              '(.*)(&amp;&amp;parse_name_parameter)(.+?)(;|$)(.*)',
+                              'define var="\3";',
+                              1,
+                              1,
+                              'i')),
+           'define var=default;') r
+  from (select '&amp;&amp;script_param' csv from dual)
+ where instr(upper(csv),
+             upper('&amp;&amp;parse_name_parameter')) != 0;
+
+
+define parse_name_parameter = "othervar="
+select nvl(max(regexp_replace(csv,
+                              '(.*)(&amp;&amp;parse_name_parameter)(.+?)(;|$)(.*)',
+                              'define othervar="\3";',
+                              1,
+                              1,
+                              'i')),
+           'define othervar=default_other;') r
+  from (select '&amp;&amp;script_param' csv from dual)
+ where instr(upper(csv),
+             upper('&amp;&amp;parse_name_parameter')) != 0;
+
+prompt
+prompt var: &amp;&amp;var
+prompt othervar: &amp;&amp;othervar
+prompt</code></pre>
+
+<h2><a id="ch5">Настройки выполнения скриптов</a></h2>
+
+<p>Действуют на протяжении сессии в SQLplus.</p>
+
+<pre>
+<code>
+SET SERVEROUTPUT ON/OFF SIZE 1000000 FORMAT WORD_WRAPPED - отображать вывод dbms_output
+                       (размер буфера, байт) (разделение по строкам для длинного вывода)
+
+SET TERMOUT ON/OFF     - включить/отключить вывод на экран терминала
+
+SET ECHO ON/OFF        - включить/отключить отображение команд по мере выполнения
+
+SET VERIFY ON/OFF      - включить/отключить отображение замененных переменных
+
+например, так:
+    old 9: AND ui.table_name = UPPER('&amp;table_name')
+    new 9: AND ui.table_name = UPPER('project_hours')
+
+SET FEEDBACK ON/OFF    - включить/отключить вывод результата выполнения команд
+
+например, так:
+    6 rows selected.
+    Commit complete.
+
+SET ESCAPE ON/OFF      - включить/отключить поиск символов для экранирования
+
+например: SQL&gt; SET ESCAPE ON
+          SQL&gt; DEFINE friends = "Joe \&amp; Matt"
+
+SET ESCAPE /           - задать другой символ экранирования (по умолчанию \)
+
+SET CONCAT ON/OFF      - включить/отключить конкатенацию, символ конкатенации по умолчанию - точка "."
+
+например:  SQL&gt; DEFINE sql_type = "PL/"
+           SQL&gt; PROMPT &amp;sql_type.SQL
+           PL/SQL
+
+SET CONCAT !           - задать другой символ для конкатенации
+
+SET DEFINE ON/OFF      - включить/отключить замену переменных (&amp;var, &amp;&amp;var)
+
+</code></pre>
+
+<p>Запомнить настройки перед выполнением скрипта и вернуть обратно по завершении выполнения:</p>
+
+<pre>
+<code class="language-sql">STORE SET original_settings REPLACE
+ ... script code here ...
+@original_settings</code></pre>
+
+<h2><a id="ch6">Другие команды</a></h2>
+
+<pre>
+<code>PROMPT Show this text.      - вывод текста на экран
+REMARK This is a comment.   - комментарий в скрипте
+REM This is a comment too.  - краткая форма записи REMARK
+
+SPOOL some_file.txt         - включить вывод выполнения скрипта файл some_file.txt (будет обнулен)
+SPOOL some_file.txt APP     - включить вывод выполнения скрипта файл some_file.txt (будет дозаписан)
+SPOOL OFF                   - отключить вывод в файл
+
+
+WHENEVER SQLERROR EXIT             - выйти при ошибке SQL
+WHENEVER SQLERROR EXIT ROLLBACK    - откатить транзакцию и выйти при ошибке SQL
+WHENEVER SQLERROR EXIT SQL.SQLCODE - выйти и вернуть код ошибки при ошибке SQL
+
+WHENEVER OSERROR EXIT              - команды аналогичны WHENEVER SQLERROR ... - но при ошибке операционной системы
+</code></pre>
+
+<h2><a id="ch7">Взаимодействие с unix shell</a></h2>
+
+<p>Обработать результат выполнения SQLplus-скрипта в Unix:</p>
+
+<pre>
+<code class="language-bash">#!/bin/bash
+if sqlplus -s user/secret @script.sql
+then
+    echo Success
+else
+    echo Unable to create raise table.
+fi</code></pre>
+
+<p>Вернуть код ответа в Unix:</p>
+
+<pre>
+<code class="language-bash">#!/bin/bash
+sqlplus -s gennick/secret &lt;&lt; EOF
+COLUMN tab_count NEW_VALUE table_count
+SELECT COUNT(*) tab_count FROM user_all_tables;
+EXIT table_count
+EOF
+
+let "tabcount = $?"
+echo You have $tabcount tables.</code></pre>
+
+<p>Вывод из скрипты в переменную командной строки unix:</p>
+
+<pre>
+<code>#!/bin/bash
+tabcount=`sqlplus -s gennick/secret &lt;&lt; EOF
+SET PAGESIZE 0
+SELECT COUNT(*) FROM user_all_tables;
+EXIT
+EOF`
+
+echo You have $tabcount tables.</code></pre>
+
+
+    </article>
+    <section class="post-nav" style="margin-bottom: 60px;">
+        <div id="left-page">
+            <div id="left-link">
+                <div id="left-arrow"><i class="fa fa-chevron-circle-left"></i></div>
+                <a href="/posts/osnovy-analiza-bezopasnosti-veb-proektov"> Основы анализа безопасности веб-проектов</a>
+            </div>
+        </div>
+        <div id="right-page">
+            <div id="right-link">
+                <a href="/posts/perevodim-sait-na-https-za-neskolko-minut">Переводим сайт на HTTPS за несколько минут </a>
+                <div id="right-arrow"><i class="fa fa-chevron-circle-right"></i></div>
+            </div>
+        </div>
+    </section>
+    <div>
+    </div>
+</main>
+    <footer>
+        <h6>
+            Copyright &copy 2017-2020
+- ezhvsalate        </h6>
+    </footer>
+</div>
+</body>
+</html>

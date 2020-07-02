@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Записная книжка ежа - Мониторинг за час: influxdb, telegraf, grafana</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/7.0.0/normalize.min.css"/>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
+    <link href="https://fonts.googleapis.com/css?family=Exo+2" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/theme/css/main.css"/>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/zenburn.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+<meta name="tags" content="influxdb" />
+<meta name="tags" content="telegraf" />
+<meta name="tags" content="grafana" />
+<meta name="tags" content="ansible" />
+</head>
+<body>
+<style>.github-corner:hover .octo-arm {
+    animation: octocat-wave 560ms ease-in-out
+}
+@keyframes octocat-wave {
+    0%, 100% {
+        transform: rotate(0)
+    }
+    20%, 60% {
+        transform: rotate(-25deg)
+    }
+    40%, 80% {
+        transform: rotate(10deg)
+    }
+}
+@media (max-width: 500px) {
+    .github-corner:hover .octo-arm {
+        animation: none
+    }
+
+    .github-corner .octo-arm {
+        animation: octocat-wave 560ms ease-in-out
+    }
+}</style><div id="container">
+    <header>
+        <h1 style="margin-bottom: 0"><a href="/"><img src="/theme/images/logo3.svg" style="width: 120px; box-shadow: None;" alt="logo"/> Записная книжка ежа</a></h1>
+        <ul class="social-media">
+            <li><a href="https://github.com/Ezhvsalate"><i class="fa fa-github fa-lg" aria-hidden="true"></i></a></li>
+        </ul>
+        <!--        <p style="margin-top: 0; margin-left: 120px;"><em>Еж иголки спрятатать не может</em></p>-->
+    </header>
+    <nav>
+        <ul>
+            <li><a                    class="active" href="/category/posty.html"> Посты </a></li>
+            <li><a href="/about">О блоге</a>
+            </li>
+        </ul>
+    </nav>
+<main>
+    <article>
+        <h2>Мониторинг за час: influxdb, telegraf, grafana</h2>
+        
+        <aside>
+            <ul>
+                <li>
+                    Опубликовано: <time datetime="2017-10-08 18:00:16+03:00">08 окт 2017</time>
+                </li>
+                <li>Время прочтения: 6 мин</li>
+                <li>
+                    Tags:
+                    <a href="/tag/influxdb.html"><em>#influxdb</em></a>
+                    <a href="/tag/telegraf.html"><em>#telegraf</em></a>
+                    <a href="/tag/grafana.html"><em>#grafana</em></a>
+                    <a href="/tag/ansible.html"><em>#ansible</em></a>
+                </li>
+            </ul>
+        </aside>
+        
+<p>В этом посте описаны установка и настройка связки технологий, позволяющих быстро и достаточно просто получить работающий сервис мониторинга.</p>
+<p>Будем использовать:</p>
+<p><a href="https://www.influxdata.com/time-series-platform/telegraf/">telegraf </a>- агент по сбору данных</p>
+<p><a href="https://www.influxdata.com/time-series-platform/influxdb/">InfluxDB</a> - база, предназначенная для хранения временных рядов (time series)</p>
+<p><a href="https://grafana.com/">Grafana</a> - для отображения метрик</p>
+<p>В заключении приведен скрипт на ansible, позволяющий развернуть все это легким движением руки.</p>
+
+<h2><a id="ch1">Предусловия</a></h2>
+
+<p>Все дальнейшие действия выполняются на машине с установленным CentOS7/Red Hat 7.</p>
+
+<p>На сайте influxdata - разработчика InfluxDB и Telegraf представлена следующая схема:</p>
+
+<p><img alt="" src="/images/tick-stack-diagram.png" style="width: 70%;" /></p>
+
+<p>Называют они этот стек технологий TICK stack - по первым буквам (Telegraf, Influxdb, Chronograf, Kapacitor).</p>
+
+<p>В рамках этого поста мы упрощаем эту схему и она принимает следующий вид:</p>
+
+<p style="margin-left: 40px;"><img alt="" src="/images/influxdata_tick-2.png" style="width: 70%;" /></p>
+
+<p>Во-первых мы пока убираем <a href="https://www.influxdata.com/time-series-platform/kapacitor/">Kapacitor</a> - движок для real-time обработки получаемых данных - его рассмотрим отдельно.</p>
+
+<p>Во-вторых вместо предлагаемого influxdata дашборда <a href="https://www.influxdata.com/time-series-platform/chronograf/">Chronograf</a> будем использовать более мощную и гибкую Grafana (хотя это по большому счету - дело вкуса).</p>
+
+<h2><a id="ch2" name="ch2">Установка и настройка InfluxDB</a></h2>
+
+<p>Начнем с базы, в которой будут храниться результаты наших измерений.</p>
+
+<p>Добавим репозиторий в менеджер пакетов YUM:</p>
+
+<pre>
+<code class="language-bash">cat &lt;&lt;EOF | sudo tee /etc/yum.repos.d/influxdb.repo
+[influxdb]
+name = InfluxDB Repository - RHEL \$releasever
+baseurl = https://repos.influxdata.com/rhel/\$releasever/\$basearch/stable
+enabled = 1
+gpgcheck = 1
+gpgkey = https://repos.influxdata.com/influxdb.key
+EOF</code></pre>
+
+<p>Установим influxdb и запустим сервис:</p>
+
+<pre>
+<code class="language-bash">sudo yum install influxdb
+sudo systemctl start influxdb</code></pre>
+
+<p>Чтобы сервис работал после перезагрузки машины, введем команду: </p>
+
+<pre>
+<code class="language-bash">sudo systemctl enable influxdb</code></pre>
+
+<p>Проверяем, что все прошло хорошо, выполнив в консоли команду:</p>
+
+<pre>
+<code class="language-bash">influx</code></pre>
+
+<p>Видим:</p>
+
+<pre>
+<code class="language-bash">Connected to http://localhost:8086 version 1.3.5
+InfluxDB shell version: 1.3.5
+</code></pre>
+
+<p>Создадим нашу первую базу командой:</p>
+
+<pre>
+<code class="language-sql">&gt; create database testdb</code></pre>
+
+<p>Посмотрим что получилось:</p>
+
+<pre>
+<code class="language-sql">&gt; show databases
+name: databases
+name
+----
+_internal
+testdb
+</code></pre>
+
+<p>Видим список:отать с базой, ее сначала нужно выбрать - для этого выполняем команду:</p>
+
+<pre>
+<code>&gt; use testdb
+Using database testdb
+</code></pre>
+
+<p>Попробуем добавить в базу значения. В документации указан такой формат:</p>
+
+<pre>
+<code>&lt;measurement&gt;[,&lt;tag-key&gt;=&lt;tag-value&gt;...] &lt;field-key&gt;=&lt;field-value&gt;[,&lt;field2-key&gt;=&lt;field2-value&gt;...] [unix-nano-timestamp]</code></pre>
+
+<p>В рамках статьи мы рассматриваем общий случай добавления измерений, очень подробный рассказ о всех возможных форматах команды - в документации <a href="https://docs.influxdata.com/influxdb/v1.3/write_protocols/line_protocol_reference/">здесь</a>.</p>
+
+<p>Выполняем команды:</p>
+
+<pre>
+<code class="language-sql">&gt; insert temperature,room=bedroom,flat=218,house=21 value=28 1507098529730843121
+&gt; insert temperature,room=kitchen,flat=218,house=21 value=24
+&gt; insert temperature,room=bedroom,flat=212,house=21 value=21
+</code></pre>
+
+<p>После этого смотрим какие измерения стали доступны:</p>
+
+<pre>
+<code class="language-sql">&gt; show measurements
+name: measurements
+name
+----
+temperature
+</code></pre>
+
+<p>Документация обещает нам SQL-like синтаксис, пробуем:</p>
+
+<pre>
+<code class="language-sql">&gt; select * from temperature
+name: temperature
+time           flat house room   value
+----           ---- ----- ----   -----
+1507098529730843121 218  21   bedroom 28
+1507098545001810563 218  21   kitchen 24
+1507098556441285440 212  21   bedroom 21
+</code></pre>
+
+<p>На что обращаем внимание: колонка time в таблице сформировалась автоматически - время мы указали только в первом случае, в остальных - добавилось текущее. Каждый тег стал &quot;колонкой&quot; в табличном представлении, результат измерения попал в колонку value.</p>
+
+<p>Новые теги могут добавляться с любого момента, например так:</p>
+
+<pre>
+<code class="language-sql">&gt; insert temperature,room=bedroom,flat=215,house=21,city=SPb value=20
+&gt; select * from temperature
+name: temperature
+time           city flat house room   value
+----           ---- ---- ----- ----   -----
+1507098529730843121    218  21   bedroom 28
+1507098545001810563    218  21   kitchen 24
+1507098556441285440    212  21   bedroom 21
+1507099214268247583 SPb  215  21   bedroom 20
+</code></pre>
+
+<p>Используя SQL-like синтаксис легко можем получить выборку по квартире:</p>
+
+<pre>
+<code>
+&gt; select * from temperature where flat='218'
+name: temperature
+time           city flat house room   value
+----           ---- ---- ----- ----   -----
+1507098529730843121    218  21   bedroom 28
+1507098545001810563    218  21   kitchen 24
+</code></pre>
+
+<p>И даже посчитать среднюю температуру по больнице:</p>
+
+<pre>
+<code class="language-sql">&gt; select mean(value) from temperature where flat='218'
+name: temperature
+time mean
+---- ----
+0   26
+</code></pre>
+
+<p>Также можно добавлять данные через REST API:</p>
+
+<pre>
+<code class="language-bash">curl -i -XPOST 'http://localhost:8086/write?db=testdb' --data-binary 'temperature,room=bathroom,flat=213,house=22 value=20'
+</code></pre>
+
+<p>И читать данные через REST API в формате JSON:</p>
+
+<pre>
+<code class="language-bash">curl -i -XPOST http://localhost:8086/query --data-urlencode "db=testdb" --data-urlencode "q=select * from temperature where room='bathroom'"
+
+HTTP/1.1 200 OK
+Connection: close
+Content-Type: application/json
+Request-Id: 6c6302b8-a8d1-11e7-a7f7-000000000000
+X-Influxdb-Version: 1.3.5
+Date: Wed, 04 Oct 2017 06:58:27 GMT
+Transfer-Encoding: chunked
+
+{"results":[{"statement_id":0,"series":[{"name":"temperature","columns":["time","city","flat","house","room","value"],"values":[["2017-10-04T06:54:16.383413704Z",null,"213","22","bathroom",20]]}]}]}
+</code></pre>
+
+<p>На этом краткое знакомство с базой InfluxDB можно закончить, очень много подробной информации при необходимости можно найти в <a href="https://docs.influxdata.com/influxdb/v1.3/introduction/">документации</a>. А мы пойдем дальше.</p>
+
+<h2><a id="ch3" name="ch3">Установка и настройка Telegraf</a></h2>
+
+<p>Telegraf - агент для сбора данных, у него есть множество плагинов как для ввода так и для вывода. Yum-репозиторий influxdata мы уже добавили в самом начале, так что сразу установим telegraf.</p>
+
+<pre>
+<code class="language-bash">sudo yum install telegraf</code></pre>
+
+<p>Далее надо сгенерировать конфигурационный файл. Для этого наберем команду:</p>
+
+<pre>
+<code class="language-bash">telegraf -sample-config telegraf.conf --input-filter cpu:mem:exec --output-filter influxdb &gt; telegraf.conf</code></pre>
+
+<p>Команда означает следующее: ув. телеграф, будь добр - создай нам конфигурационный файл telegraf.conf, в котором задействуй плагины ввода данных cpu, mem и exec (их вообще <a href="http://docs.influxdata.com/telegraf/v1.4/inputs/">очень много</a>, можно хоть данные с сервера <a href="https://github.com/influxdata/telegraf/tree/release-1.4/plugins/inputs/minecraft">minecraft</a> собирать), вывода данных - influxdb (можно еще в grafite, elasticsearch и <a href="http://docs.influxdata.com/telegraf/v1.4/outputs/">много куда еще</a>).</p>
+
+<p>Встроенные плагины cpu и mem отвечают за сбор данных об активности процессора и памяти соответственно. А вот плагин exec - предоставляет возможность использовать для сбора данных произвольные скрипты.</p>
+
+<p>В сгенерированном файле видим следующее:</p>
+
+<pre>
+<code class="language-ini"># Telegraf Configuration
+#
+# Telegraf is entirely plugin driven. All metrics are gathered from the
+# declared inputs, and sent to the declared outputs.
+#
+# Plugins must be declared in here to be active.
+# To deactivate a plugin, comment out the name and any variables.
+#
+# Use 'telegraf -config telegraf.conf -test' to see what metrics a config
+# file would generate.
+#
+# Environment variables can be used anywhere in this config file, simply prepend
+# them with $. For strings the variable must be within quotes (ie, "$STR_VAR"),
+# for numbers and booleans they should be plain (ie, $INT_VAR, $BOOL_VAR)
+
+
+# Global tags can be specified here in key="value" format.
+[global_tags]
+  # dc = "us-east-1" # will tag all metrics with dc=us-east-1
+  # rack = "1a"
+  ## Environment variables can be used as tags, and throughout the config file
+  # user = "$USER"
+
+
+# Configuration for telegraf agent
+[agent]
+...
+###############################################################################
+#                   OUTPUT PLUGINS                        #
+###############################################################################
+
+# Configuration for influxdb server to send metrics to
+[[outputs.influxdb]]
+  ## The HTTP or UDP URL for your InfluxDB instance.  Each item should be
+  ## of the form:
+  ##  scheme "://" host [ ":" port]
+  ##
+  ## Multiple urls can be specified as part of the same cluster,
+  ## this means that only ONE of the urls will be written to each interval.
+  # urls = ["udp://localhost:8089"] # UDP endpoint example
+  urls = ["http://localhost:8086"] # required
+  ## The target database for metrics (telegraf will create it if not exists).
+  database = "telegraf" # required
+
+  ## Name of existing retention policy to write to.  Empty string writes to
+  ## the default retention policy.
+  retention_policy = ""
+  ## Write consistency (clusters only), can be: "any", "one", "quorum", "all"
+  write_consistency = "any"
+
+  ## Write timeout (for the InfluxDB client), formatted as a string.
+  ## If not provided, will default to 5s. 0s means no timeout (not recommended).
+  timeout = "5s"
+...
+###############################################################################
+#                   PROCESSOR PLUGINS                      #
+###############################################################################
+...
+###############################################################################
+#                   AGGREGATOR PLUGINS                     #
+###############################################################################
+...
+###############################################################################
+#                   INPUT PLUGINS                        #
+###############################################################################
+
+# Read metrics about cpu usage
+[[inputs.cpu]]
+  ## Whether to report per-cpu stats or not
+  percpu = true
+  ## Whether to report total system cpu stats or not
+  totalcpu = true
+  ## If true, collect raw CPU time metrics.
+  collect_cpu_time = false
+  ## If true, compute and report the sum of all non-idle CPU states.
+  report_active = false
+
+
+# Read metrics from one or more commands that can output to stdout
+[[inputs.exec]]
+  ## Commands array
+  commands = [
+   "/tmp/test.sh",
+   "/usr/bin/mycollector --foo=bar",
+   "/tmp/collect_*.sh"
+  ]
+
+  ## Timeout for each command to complete.
+  timeout = "5s"
+
+  ## measurement name suffix (for separating different commands)
+  name_suffix = "_mycollector"
+
+  ## Data format to consume.
+  ## Each data format has its own unique set of configuration options, read
+  ## more about them here:
+  ## https://github.com/influxdata/telegraf/blob/master/docs/DATA_FORMATS_INPUT.md
+  data_format = "influx"
+
+
+# Read metrics about memory usage
+[[inputs.mem]]
+  # no configuration</code></pre>
+
+<p>В output plugins -&gt; influxdb указываем/изменяем данные для подключения к базе:</p>
+
+<pre>
+<code class="language-ini">  urls = ["http://localhost:8086"] # required
+  ## The target database for metrics (telegraf will create it if not exists).
+  database = "telegraf" # required</code></pre>
+
+<p>Cмотрим пример настроек плагина exec для сбора данных произвольным скриптом:</p>
+
+<pre>
+<code class="language-ini"># Read metrics from one or more commands that can output to stdout
+[[inputs.exec]]
+  ## Commands array
+  commands = [
+   "/tmp/test.sh",
+   "/usr/bin/mycollector --foo=bar",
+   "/tmp/collect_*.sh"
+  ]</code></pre>
+
+<p>Попробуем написать свой такой скрипт:</p>
+
+<pre>
+<code class="language-bash">#!/bin/bash
+ps aux | grep [k]araf.main.Main &gt; /dev/null
+if [ $? -eq 0 ]; then
+  echo "process_status,host=$(hostname),proc=karaf working=1"
+else
+  echo "process_status,host=$(hostname),proc=karaf working=0"
+fi</code></pre>
+
+<p>Задача у скрипта простая - пробуем найти в процессах [k]araf.main.Main ([k] - взято в скобки специально, таким образом мы исключим из вывода сам grep), если выходной код 0 - то выводим строку с данными для influxdb.</p>
+
+<p>Добавляем метрику process_status с тегами host и proc и значением working равным 0 или 1 в зависимости от результата проверки.</p>
+
+<p>Сохраняем этот скрипт как /opt/telegraf/check_karaf.sh и редактируем конфиг:</p>
+
+<pre>
+<code class="language-ini">[[inputs.exec]]
+## Commands array
+commands = ["/opt/oapi/telegraf/check_karaf.sh",]</code></pre>
+
+<p>Кладем полученный конфиг в /etc/telegraf/telegraf.conf и запускаем сервис:</p>
+
+<pre>
+<code class="language-bash">sudo systemctl start telegraf</code></pre>
+
+<p>Посмотрим в базе - появились ли данные:</p>
+
+<pre>
+<code class="language-bash">$ influx
+Connected to http://localhost:8086 version 1.3.5
+InfluxDB shell version: 1.3.5
+&gt; use telegraf
+Using database telegraf
+&gt; show measurements
+name: measurements
+name
+----
+cpu
+disk
+diskio
+kernel
+mem
+process_status
+processes
+swap
+system
+&gt; select last(*) from process_status where proc ='karaf'
+name: process_status
+time           last_working
+----           ------------
+1507211181000000000 1
+
+</code></pre>
+
+<p>Данные пишутся, на этом с telegraf пока закончим, выполнив напоследок следующую команду, чтобы сервис telegraf запускался после каждой перезагрузки:</p>
+
+<pre>
+<code class="language-bash">sudo systemctl enable telegraf</code></pre>
+
+<h2><a id="ch4" name="ch4">Установка и настройка Grafana</a></h2>
+
+<p>Почти готово - осталось настроить дашборд для отображения собранных метрик.</p>
+
+<p>Установим и запустим Grafana:</p>
+
+<pre>
+<code class="language-bash">wget https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana-4.5.2-1.x86_64.rpm
+sudo yum localinstall grafana-4.5.2-1.x86_64.rpm
+sudo systemctl enable grafana-server --now</code></pre>
+
+<p>По умолчанию grafana запустится на порту 3000. Идем браузером на http://host:3000/login, видим окно:</p>
+
+<p><a data-title="Страница авторизации" href="/images/grafana_login.png"><img alt="" class="img-fluid img-thumbnail" src="/images/grafana_login.png" style="width: 200px; height: 162px;" /></a></p>
+
+<p>Авторизуемся, используя стандартные логин и пароль: admin / admin.</p>
+
+<p>Если чуда не произошло и на порту 3000 искомого веб-интерфейса мы не увидели, смотрим логи в /var/log/grafana.</p>
+
+<p>В интерфесе первым делом настраиваем источник данных (datasources - add datasource): </p>
+
+<p><a data-title="Настраиваем источник данных" href="/images/grafana_datasource.png"><img alt="" class="img-fluid img-thumbnail" src="/images/grafana_datasource.png" style="width: 200px; height: 273px;" /></a></p>
+
+<p>Далее создаем свой первый дашборд и следуя подсказкам интерфейса конструируем запрос, например так:</p>
+
+<p><a data-title="Добавляем график загрузки CPU" href="/images/grafana_dashboard.png"><img alt="" class="img-fluid img-thumbnail" src="/images/grafana_dashboard.png" style="width: 600px; height: 193px;" /></a></p>
+
+<p>Дальнейший процесс носит скорее творческий, чем технический характер. По большому счету можно и не знать синтаксис SQL, а ориентироваться на настройки, предоставляемые интерфейсом Grafana.</p>
+
+<p>Создав dashboard, мы можем его экспортировать в json-формате и в дальнейшем загрузить на другом хосте. Мы будем активно использовать эту возможность при создании ansible-скрипта.</p>
+
+<p>Еще один важный момент - понимание того, что все операции, которые могут быть совершены в Grafana через интерфейс, могут быть с таким же успехом выполнены через HTTP REST API. Подробная документация по <a href="http://docs.grafana.org/http_api/">HTTP API</a> здесь.</p>
+
+<h2><a id="ch5" name="ch5">Ansible-playbook для быстрого деплоя</a></h2>
+
+<p>Ansible - популярный инструмент для управления конфигурациями. В случае, когда надо выполнить описанные выше действия на большом количестве виртуалок, часть из которых периодически умирают и появляются новые, ansible может очень сильно облегчить жизнь.</p>
+
+<p>Ниже привожу код playbook-а, выполняющего описанные в статье действия. Сразу оговорюсь - playbook приведен для примера и не является образцом аккуратности и правильности с т.з. лучших практик ansible. На практик, конечно, лучше выделить отдельные роли и вызывать их и т.д.</p>
+
+<pre>
+<code>---
+- name: "Install telegraf, influxDB, grafana"
+  hosts: hostname
+  gather_facts: False
+  tasks:
+   - yum: name="{{item}}" state=present
+    with_items:
+      - telegraf
+      - influxdb
+   - copy:
+      src: "{{playbook_dir}}/files/grafana-4.5.2-1.x86_64.rpm"
+      dest: "/tmp/grafana-4.5.2-1.x86_64.rpm"
+      owner: "{{ssh_user}}"
+      group: wheel
+   - yum:
+      name: "/tmp/grafana-4.5.2-1.x86_64.rpm"
+      state: present
+  become: true
+  become_method: sudo
+
+- name: "Configure monitoring scripts"
+  hosts: hostname
+  gather_facts: False
+  tasks:
+   - template: src=templates/app_telegraf.conf.j2 dest=/etc/telegraf/telegraf.conf mode=0777
+   - file:
+      path: "{{work_dir}}/telegraf/"
+      state: directory
+   - copy:
+      src: scripts/monitoring/custom_check_script.sh
+      dest: "{{work_dir}}/telegraf/custom_check_script.sh"
+  become: true
+  become_method: sudo
+
+- name: "Start monitoring and import dashboard"
+  hosts: hostname
+  gather_facts: False
+  tasks:
+   - service: name={{item}} state=started
+    with_items:
+      - telegraf
+      - influxdb
+      - grafana-server
+   - pause: prompt="Waiting 10 seconds for grafana start" seconds="10"
+   - name: Create data source
+    uri:
+      url: "http://{{hostname}}:3000/api/datasources"
+      method: POST
+      body:
+       name: "InfluxDB_local"
+       type: "influxdb"
+       url: "http://{{hostname}}:8086"
+       access: "direct"
+       basicAuth: false
+       database: "telegraf"
+      body_format: json
+      user: "admin"
+      password: "admin"
+      force_basic_auth: yes
+   - name: Import dashboard
+    uri:
+      url: "http://{{hostname}}:3000/api/dashboards/import"
+      method: POST
+      body: "{{ lookup('file','files/test_dashboard.json') }}"
+      body_format: json
+      user: "admin"
+      password: "admin"
+      force_basic_auth: yes
+  become: true
+  become_method: sudo
+</code></pre>
+
+<p>На первом шаге плейбука мы добавляем нужные репозитории и устанавливаем telegraf, influxdb, grafana. Далее на втором шаге конфигурируем telegraf, используя шаблон jinja2, затем запускаем все сервисы и создаем источник данных/импортируем дашборд в grafana, используя REST API.  </p>
+
+<p>На этом, наверное, можно закончить. Дочитавшим - котика :)</p>
+
+<p><img alt="" src="/images/kotik.jpg" style="width: 300px; height: 199px; box-shadow: None;" /></p>
+
+
+    </article>
+    <section class="post-nav" style="margin-bottom: 60px;">
+        <div id="left-page">
+            <div id="left-link">
+                <div id="left-arrow"><i class="fa fa-chevron-circle-left"></i></div>
+                <a href="/posts/ansible-peredaem-json-v-tele-zaprosa-ispolzuia-modul-uri"> Ansible: передаем json в теле запроса, используя модуль uri</a>
+            </div>
+        </div>
+        <div id="right-page">
+            <div id="right-link">
+                <a href="/"> </a>
+            </div>
+        </div>
+    </section>
+    <div>
+    </div>
+</main>
+    <footer>
+        <h6>
+            Copyright &copy 2017-2020
+- ezhvsalate        </h6>
+    </footer>
+</div>
+</body>
+</html>

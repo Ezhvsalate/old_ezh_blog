@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Записная книжка ежа - Django: шпаргалка с полезностями</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/7.0.0/normalize.min.css"/>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
+    <link href="https://fonts.googleapis.com/css?family=Exo+2" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="/theme/css/main.css"/>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/zenburn.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+<meta name="tags" content="django" />
+<meta name="tags" content="python" />
+</head>
+<body>
+<style>.github-corner:hover .octo-arm {
+    animation: octocat-wave 560ms ease-in-out
+}
+@keyframes octocat-wave {
+    0%, 100% {
+        transform: rotate(0)
+    }
+    20%, 60% {
+        transform: rotate(-25deg)
+    }
+    40%, 80% {
+        transform: rotate(10deg)
+    }
+}
+@media (max-width: 500px) {
+    .github-corner:hover .octo-arm {
+        animation: none
+    }
+
+    .github-corner .octo-arm {
+        animation: octocat-wave 560ms ease-in-out
+    }
+}</style><div id="container">
+    <header>
+        <h1 style="margin-bottom: 0"><a href="/"><img src="/theme/images/logo3.svg" style="width: 120px; box-shadow: None;" alt="logo"/> Записная книжка ежа</a></h1>
+        <ul class="social-media">
+            <li><a href="https://github.com/Ezhvsalate"><i class="fa fa-github fa-lg" aria-hidden="true"></i></a></li>
+        </ul>
+        <!--        <p style="margin-top: 0; margin-left: 120px;"><em>Еж иголки спрятатать не может</em></p>-->
+    </header>
+    <nav>
+        <ul>
+            <li><a                    class="active" href="/category/posty.html"> Посты </a></li>
+            <li><a href="/about">О блоге</a>
+            </li>
+        </ul>
+    </nav>
+<main>
+    <article>
+        <h2>Django: шпаргалка с полезностями</h2>
+        
+        <aside>
+            <ul>
+                <li>
+                    Опубликовано: <time datetime="2017-10-17 08:34:36+03:00">17 окт 2017</time>
+                </li>
+                <li>Время прочтения: 3 мин</li>
+                <li>
+                    Tags:
+                    <a href="/tag/django.html"><em>#django</em></a>
+                    <a href="/tag/python.html"><em>#python</em></a>
+                </li>
+            </ul>
+        </aside>
+        
+<p>В этой статье осуществлена попытка собрать полезности, по работе с популярным web-фреймворком на Python.&nbsp;</p>
+
+<p>Поводом к ее написанию стало прочтение серии из семи замечательных статей, написанных&nbsp;<strong>Vitor Freitas&nbsp;</strong>в блоге&nbsp;<a href="https://simpleisbetterthancomplex.com/series/beginners-guide/1.11/">simpleisbetterthancomplex.com</a>. По мере прочтения стало понятно, что вся информация в голове не уляжется и нужно
+    складывать ее в более для того подходящее хранилище.</p>
+
+<h2><a id="ch1">Команды django-admin и manage.py</a></h2>
+
+<p>Этот перечень ни в коем случае не является полным, здесь приведены наиболее часто используемые команды.</p>
+<pre>
+<code class="language-python">django-admin startproject myproject   - создать новый проект (генерирует структуру)
+
+python manage.py runserver            - запустить тестовый сервер (на http://127.0.0.1:8000)
+
+python manage.py runserver 0.0.0.0:80 - запустить тестовый сервер доступный извне (не
+                                        злоупотреблять)
+
+django-admin startapp myapp           - создать приложение в текущем проекте
+
+django-admin makemessages             - сгенерировать файлы с сообщениями подлежащими локализации
+
+django-admin compilemessages          - скомпилировать файлы локализации
+
+python manage.py makemigrations       - создать файлы миграций для БД
+
+python manage.py sqlmigrate app 0001  - просмотр sql-кода, сгенерированного в миграции 0001
+                                        приложения app
+
+python manage.py shell                - запустить окно командной строки
+
+python manage.py test                 - прогнать тесты (для прогона будет создана чистая БД)
+
+python manage.py test --verbosity=2   - управление детализацией вывода при тестах (2-макс, 0 - мин)
+
+python manage.py createsuperuser      - создать пользователя-администратора
+</code></pre>
+
+<h2><a id="ch2">Операции с моделями</a></h2>
+
+<pre>
+<code>В примерах ниже Board - класс, board - экземпляр класса.
+
+
+Операция                                              Пример кода
+Создать обьект без сохранения                         board = Board()
+Сохранить обьект (создать или обновить)	              board.save()
+Создать обьект и сохранить в базу	              Board.objects.create(name='...', desc='...')
+Получить список всех обьектов	                      Board.objects.all()
+Получить список обьектов, фильтр по полю	      Board.objects.get(id=1)</code></pre>
+
+<p>&nbsp;</p>
+
+<h2><a id="ch3">Шаблоны тестов</a></h2>
+
+<p>Проверка HTTP-кода ответа для адреса с alias-ом home.</p>
+
+<pre>
+<code class="language-python">from django.core.urlresolvers import reverse
+from django.test import TestCase
+
+class HomeTests(TestCase):
+    def test_home_view_status_code(self):
+        url = reverse('home')
+        response = self.client.get(url)
+        self.assertEquals(response.status_code, 200)</code></pre>
+
+<p>Проверка, что URL вызывает правильную view</p>
+
+<pre>
+<code class="language-python">def test_home_url_resolves_home_view(self):
+    view = resolve('/')
+    self.assertEquals(view.func, home)</code></pre>
+
+<h2><a id="ch4">Шаблоны регулярных выражений для URL</a></h2>
+
+<p>В этом разделе приведены несколько примеров наиболее часто используемых шаблонов для файла urls.py.</p>
+
+<p id="primary-key-autofield" style="text-align: center;"><strong>Автогенерируемый первичный ключ</strong></p>
+
+<p>Регулярное выражение:</p>
+
+<pre>
+<code class="language-python"> (?P&lt;pk&gt;\d+)</code></pre>
+
+<p>Пример использования:&nbsp;</p>
+
+<pre>
+<code data-lang="python">url(r'^questions/(?P&lt;pk&gt;\d+)/$', views.question_details, name='question_details'),</code></pre>
+
+<table align="center" border="1" cellpadding="1" cellspacing="1" style="width:95%;">
+    <thead>
+    </thead>
+    <tbody>
+    <tr>
+        <td colspan="2" rowspan="1" style="text-align: center;"><strong><span style="color:#27ae60;">Подходит</span></strong></td>
+        <td colspan="1" rowspan="1" style="text-align: center;"><strong><span style="color:#c0392b;">Не подходит</span></strong></td>
+    </tr>
+    <tr>
+        <td style="text-align: center;">URL</td>
+        <td style="text-align: center;">Будет извлечено</td>
+        <td style="text-align: center;">URL</td>
+    </tr>
+    <tr>
+        <td>
+            <p>/questions/0/</p>
+        </td>
+        <td>{&#39;pk&#39;: &#39;0&#39;}</td>
+        <td>/questions/-1/</td>
+    </tr>
+    <tr>
+        <td>
+            <p>/questions/1/</p>
+        </td>
+        <td>{&#39;pk&#39;: &#39;1&#39;}</td>
+        <td>/questions/test-1/</td>
+    </tr>
+    <tr>
+        <td>
+            <p>/questions/934/</p>
+        </td>
+        <td>{&#39;pk&#39;: &#39;934&#39;}</td>
+        <td>/questions/abcdef/</td>
+    </tr>
+    </tbody>
+</table>
+
+<h4 style="text-align: center;">&nbsp;</h4>
+
+<p id="slug-fields" style="text-align: center;"><strong>Текстовая ссылка (ЧПУ)</strong></p>
+
+<p>Регулярное выражение:</p>
+
+<pre>
+<code class="language-python">(?P&lt;slug&gt;[-\w]+)-(?P&lt;pk&gt;\d+)</code></pre>
+
+<p>Пример использования:&nbsp;</p>
+
+<pre>
+<code data-lang="python">url(r'^blog/(?P&lt;slug&gt;[-\w]+)-(?P&lt;pk&gt;\d+)/$', views.blog_post, name='blog_post'),</code></pre>
+
+<table align="center" border="1" cellpadding="1" cellspacing="1" style="width:95%;">
+    <thead>
+    </thead>
+    <tbody>
+    <tr>
+        <td colspan="2" rowspan="1" style="text-align: center;"><strong><span style="color:#27ae60;">Подходит</span></strong></td>
+        <td colspan="1" rowspan="1" style="text-align: center;"><strong><span style="color:#c0392b;">Не подходит</span></strong></td>
+    </tr>
+    <tr>
+        <td style="text-align: center;">URL</td>
+        <td style="text-align: center;">Будет извлечено</td>
+        <td style="text-align: center;">URL</td>
+    </tr>
+    <tr>
+        <td>
+            <p>/blog/hello-world-159/</p>
+        </td>
+        <td>{&#39;slug&#39;: &#39;hello-world&#39;, &#39;pk&#39;: &#39;159&#39;}</td>
+        <td>
+            <p>/blog/hello-world/</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <p>/blog/a-0/</p>
+        </td>
+        <td>
+            <p>{&#39;slug&#39;: &#39;a&#39;, &#39;pk&#39;: &#39;0&#39;}</p>
+        </td>
+        <td>
+            <p>/blog/1/</p>
+        </td>
+    </tr>
+    <tr>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>
+            <p>/blog/helloworld1/</p>
+        </td>
+    </tr>
+    <tr>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>
+            <p>/hello-world-1-test/</p>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<p style="text-align: center;">&nbsp;</p>
+
+<p style="text-align: center;">Имя пользователя</p>
+
+<p>Регулярное выражение:</p>
+
+<pre>
+<code class="language-python">(?P&lt;username&gt;[\w.@+-]+)</code></pre>
+
+<p>Пример использования:&nbsp;</p>
+
+<pre>
+<code data-lang="python">url(r'^profile/(?P&lt;username&gt;[\w.@+-]+)/$', views.user_profile),</code></pre>
+
+<table align="center" border="1" cellpadding="1" cellspacing="1" style="width:95%;">
+    <thead>
+    </thead>
+    <tbody>
+    <tr>
+        <td colspan="2" rowspan="1" style="text-align: center;"><strong><span style="color:#27ae60;">Подходит</span></strong></td>
+        <td colspan="1" rowspan="1" style="text-align: center;"><strong><span style="color:#c0392b;">Не подходит</span></strong></td>
+    </tr>
+    <tr>
+        <td style="text-align: center;">URL</td>
+        <td style="text-align: center;">Будет извлечено</td>
+        <td style="text-align: center;">URL</td>
+    </tr>
+    <tr>
+        <td>
+            <p>/profile/vitorfs/</p>
+        </td>
+        <td>
+            <p>{&#39;username&#39;: &#39;vitorfs&#39;}</p>
+        </td>
+        <td>
+            <p>/profile/*vitorfs/</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <p>/profile/vitor.fs/</p>
+        </td>
+        <td>
+            <p>{&#39;username&#39;: &#39;vitor.fs&#39;}</p>
+        </td>
+        <td>
+            <p>/profile/$vitorfs/</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <p>/profile/@vitorfs/</p>
+        </td>
+        <td>{&#39;username&#39;: &#39;@vitorfs&#39;}</td>
+        <td>
+            <p>/profile/vitor fs/</p>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<p>&nbsp;</p>
+
+<p style="text-align: center;"><strong>Год</strong></p>
+
+<p>Регулярное выражение:</p>
+
+<pre>
+<code class="language-python">(?P&lt;year&gt;[0-9]{4})</code></pre>
+
+<p>Пример использования:&nbsp;</p>
+
+<pre>
+<code data-lang="python">url(r'^articles/(?P&lt;year&gt;[0-9]{4})/$', views.year_archive)</code></pre>
+
+<table align="center" border="1" cellpadding="1" cellspacing="1" style="width:95%;">
+    <thead>
+    </thead>
+    <tbody>
+    <tr>
+        <td colspan="2" rowspan="1" style="text-align: center;"><strong><span style="color:#27ae60;">Подходит</span></strong></td>
+        <td colspan="1" rowspan="1" style="text-align: center;"><strong><span style="color:#c0392b;">Не подходит</span></strong></td>
+    </tr>
+    <tr>
+        <td style="text-align: center;">URL</td>
+        <td style="text-align: center;">Будет извлечено</td>
+        <td style="text-align: center;">URL</td>
+    </tr>
+    <tr>
+        <td>
+            <p>/articles/2016/</p>
+        </td>
+        <td>{&#39;year&#39;: &#39;2016&#39;}</td>
+        <td>
+            <p>/articles/999/</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <p>/articles/9999/</p>
+        </td>
+        <td>{&#39;year&#39;: &#39;9999&#39;}</td>
+        <td>&nbsp;</td>
+    </tr>
+    </tbody>
+</table>
+
+<p>&nbsp;</p>
+
+<p style="text-align: center;"><strong>Год/месяц</strong></p>
+
+<p>Регулярное выражение:</p>
+
+<pre>
+<code class="language-python">(?P&lt;year&gt;[0-9]{4})/(?P&lt;month&gt;[0-9]{2})</code></pre>
+
+<p>Пример использования:&nbsp;</p>
+
+<pre>
+<code data-lang="python">url(r'^articles/(?P&lt;year&gt;[0-9]{4})/(?P&lt;month&gt;[0-9]{2})/$', views.month_archive),</code></pre>
+
+<table align="center" border="1" cellpadding="1" cellspacing="1" style="width:95%;">
+    <thead>
+    </thead>
+    <tbody>
+    <tr>
+        <td colspan="2" rowspan="1" style="text-align: center;"><strong><span style="color:#27ae60;">Подходит</span></strong></td>
+        <td colspan="1" rowspan="1" style="text-align: center;"><strong><span style="color:#c0392b;">Не подходит</span></strong></td>
+    </tr>
+    <tr>
+        <td style="text-align: center;">URL</td>
+        <td style="text-align: center;">Будет извлечено</td>
+        <td style="text-align: center;">URL</td>
+    </tr>
+    <tr>
+        <td>
+            <p>/articles/2016/01/</p>
+        </td>
+        <td>
+            <p>{&#39;year&#39;: &#39;2016&#39;, &#39;month&#39;: &#39;01&#39;}</p>
+        </td>
+        <td>
+            <p>/articles/2016/1/</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <p>/articles/2016/12/</p>
+        </td>
+        <td>
+            <p>{&#39;year&#39;: &#39;2016&#39;, &#39;month&#39;: &#39;12&#39;}</p>
+        </td>
+        <td>&nbsp;</td>
+    </tr>
+    </tbody>
+</table>
+
+<p style="text-align: center;">&nbsp;</p>
+
+<p style="text-align: center;"><strong>Год / месяц / день</strong></p>
+
+<p>Регулярное выражение:</p>
+
+<pre>
+<code class="language-python">(?P&lt;year&gt;[0-9]{4})/(?P&lt;month&gt;[0-9]{2})/(?P&lt;day&gt;[0-9]{2})</code></pre>
+
+<p>Пример использования:&nbsp;</p>
+
+<pre>
+<code data-lang="python">url(r'^articles/(?P&lt;year&gt;[0-9]{4})/(?P&lt;month&gt;[0-9]{2})/(?P&lt;day&gt;[0-9]{2})/$', views.article_detail)</code></pre>
+
+<table align="center" border="1" cellpadding="1" cellspacing="1" style="width:95%;">
+    <thead>
+    </thead>
+    <tbody>
+    <tr>
+        <td colspan="2" rowspan="1" style="text-align: center;"><strong><span style="color:#27ae60;">Подходит</span></strong></td>
+        <td colspan="1" rowspan="1" style="text-align: center;"><strong><span style="color:#c0392b;">Не подходит</span></strong></td>
+    </tr>
+    <tr>
+        <td style="text-align: center;">URL</td>
+        <td style="text-align: center;">Будет извлечено</td>
+        <td style="text-align: center;">URL</td>
+    </tr>
+    <tr>
+        <td>
+            <p>/articles/2016/01/01/</p>
+        </td>
+        <td>
+            <p>{&#39;year&#39;: &#39;2016&#39;, &#39;month&#39;: &#39;01&#39;, day: &#39;01&#39;}</p>
+        </td>
+        <td>
+            <p>/articles/2016/01/9/</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <p>/articles/2016/02/28/</p>
+        </td>
+        <td>
+            <p>{&#39;year&#39;: &#39;2016&#39;, &#39;month&#39;: &#39;02&#39;, &#39;day&#39;: &#39;28&#39;}</p>
+        </td>
+        <td>
+            <p>/articles/2016/01/290/</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <p>/articles/9999/99/99/</p>
+        </td>
+        <td>{&#39;year&#39;: &#39;9999&#39;, &#39;month&#39;: &#39;99&#39;, &#39;day&#39;: &#39;99&#39;}</td>
+        <td>&nbsp;</td>
+    </tr>
+    </tbody>
+</table>
+
+<p>&nbsp;</p>
+
+<h2><a id="ch5">Переиспользуемые шаблоны (Templates)</a></h2>
+
+<p>&nbsp;</p>
+
+<p>Шаблон для рендеринга формы, поддерживающий отображение валидности/невалидности полей, подсказок к полям, ошибок. Использует классы bootstrap4 и плагин widget-tweaks.</p>
+
+<pre>
+<code class="language-html">{% load widget_tweaks %}
+
+{% for field in form %}
+  &lt;div class="form-group"&gt;
+    {{ field.label_tag }}
+
+    {% if form.is_bound %}
+      {% if field.errors %}
+        {% render_field field class="form-control is-invalid" %}
+        {% for error in field.errors %}
+          &lt;div class="invalid-feedback"&gt;
+            {{ error }}
+          &lt;/div&gt;
+        {% endfor %}
+      {% else %}
+        {% render_field field class="form-control is-valid" %}
+      {% endif %}
+    {% else %}
+      {% render_field field class="form-control" %}
+    {% endif %}
+
+    {% if field.help_text %}
+      &lt;small class="form-text text-muted"&gt;
+        {{ field.help_text }}
+      &lt;/small&gt;
+    {% endif %}
+  &lt;/div&gt;
+{% endfor %}</code></pre>
+
+<h2><a id="ch6">Полезные дополнения/расширения Django</a></h2>
+
+<p><strong>django-widget-tweaks</strong></p>
+
+<p>Позволяет управлять рендерингом элементов форм в шаблонах, а не в коде форм. Дает возможность добавлять CSS-классы и HTML- аттрибуты. Лицензия MIT.</p>
+
+<pre>
+<code class="language-python">pip install django-widget-tweaks</code></pre>
+
+<p><strong>awesome-slugify</strong></p>
+
+<p>Позволяет преобразовывать строки, включающие не-ASCII символы в строки для URL. Лицензия&nbsp;GNU GPLv3.</p>
+
+<p>Например, так:</p>
+
+<pre>
+<code class="language-python">from slugify import slugify
+slugify('Я борщ', to_lower=True) # ya-borsch</code></pre>
+
+<pre>
+<code class="language-python">pip install awesome-slugify</code></pre>
+
+<p>&nbsp;</p>
+
+
+    </article>
+    <section class="post-nav" style="margin-bottom: 60px;">
+        <div id="left-page">
+            <div id="left-link">
+                <div id="left-arrow"><i class="fa fa-chevron-circle-left"></i></div>
+                <a href="/posts/pishem-svoi-filtry-dlia-ansible"> Пишем свои фильтры для Ansible</a>
+            </div>
+        </div>
+        <div id="right-page">
+            <div id="right-link">
+                <a href="/posts/ansible-peredaem-json-v-tele-zaprosa-ispolzuia-modul-uri">Ansible: передаем json в теле запроса, используя модуль uri </a>
+                <div id="right-arrow"><i class="fa fa-chevron-circle-right"></i></div>
+            </div>
+        </div>
+    </section>
+    <div>
+    </div>
+</main>
+    <footer>
+        <h6>
+            Copyright &copy 2017-2020
+- ezhvsalate        </h6>
+    </footer>
+</div>
+</body>
+</html>
