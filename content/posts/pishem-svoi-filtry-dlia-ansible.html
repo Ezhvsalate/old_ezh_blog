@@ -1,0 +1,118 @@
+<html>
+<head>
+    <title>Пишем свои фильтры для Ansible</title>
+    <meta name="tags" content="ansible"/>
+    <meta name="date" content="2017-10-21 19:09:52"/>
+    <meta name="category" content="Посты"/>
+    <meta name="authors" content="Ezhvsalate"/>
+    <meta name="summary" content="Ansible  &quot;из коробки&quot; имеет множество встроенных фильтров, как реализованных в jinja2, так и собственных. Однако, бывают ситуации, в которых подходящего дефолтного фильтра нет (а очень хочется). В этой короткой статье мы научимя писать свои плагины-фильтры для ansible.">
+    <meta name="cover" content="images/pishem-svoi-filtry-dlia-ansible.png"/>
+</head>
+<body>
+<p>Ansible &quot;из коробки&quot; имеет множество встроенных фильтров, как реализованных в jinja2, так и собственных. Подробное описание существующих фильтров можно найти на странице документации. Однако, бывают ситуации, в которых подходящего дефолтного фильтра нет (а очень хочется).&nbsp; В этой короткой статье мы научимcя&nbsp;писать свои&nbsp;плагины-фильтры для ansible.</p>
+
+<h2><a id="ch1" name="ch1">Задача...</a></h2>
+
+<p>Задача следующая:&nbsp;написать плагин, который будет преобразовывать переменную, представляющую собой дату и время в строковом формате в другой произвольный формат.</p>
+
+<p>Например, имея на входе дату в строке вида &quot;2017-10-14T15:39:22Z&quot; хочу получить &quot;14.10.2017&quot;.</p>
+
+<h2><a id="ch2" name="ch2">... и ее решение</a></h2>
+
+<p>Подготовим следующую структуру:</p>
+
+<pre>
+<code>- inventory
+- filter_plugins
+-- filters.py
+- test.yml</code></pre>
+
+<p>В плейбуке test.yml опишем вызов нашего будущего фильтра:</p>
+
+<pre>
+<code>---
+- hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Print formatted time
+      debug:
+        msg: "{{'2017-10-14T15:39:22Z'|format_time}}"</code></pre>
+
+<p>В файле filters.py опишем сам фильтр:</p>
+
+<pre>
+<code class="language-python">#!/usr/bin/python
+import time
+
+class FilterModule(object):
+    def filters(self):
+        return {
+            'format_time': self.format_time
+        }
+
+    def format_time(self, time_string):
+        result = time.strftime('%d.%m.%Y', time.strptime(time_string, '%Y-%m-%dT%H:%M:%SZ'))
+        return result
+</code></pre>
+
+<p>Пробуем запустить плейбук:</p>
+
+<pre>
+<code class="language-bash">$ ansible-playbook -i inventory/test test.yml
+
+PLAY [localhost] ***************************************************************************************************
+
+TASK [Print formatted time] ****************************************************************************************************
+ok: [localhost] =&gt; {
+    "msg": "14.10.2017"
+}
+
+</code></pre>
+
+<p>Неплохо, но мы хотим большего - задавать любой входной и выходной форматы. Немного доработаем&nbsp;filters.py:</p>
+
+<pre>
+<code class="language-python">#!/usr/bin/python
+import time
+
+class FilterModule(object):
+    def filters(self):
+        return {
+            'format_time': self.format_time
+        }
+
+    def format_time(self, time_string, in_format, out_format):
+        if time_string == '':
+            return ''
+        else:
+            return time.strftime(out_format, time.strptime(time_string, in_format))</code></pre>
+
+<p>Кроме входных параметров я добавил обработку пустого входного time_string, чтобы не возникало ошибки, если фильтр применен к не заданной переменной.</p>
+
+<p>И плейбук:</p>
+
+<pre>
+<code>---
+- hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Print formatted time
+      debug:
+        msg: "{{'2017-10-14T15:39:22Z'|format_time('%Y-%m-%dT%H:%M:%SZ','%d.%m.%Y')}}"</code></pre>
+
+<p>Проверяем...работает!</p>
+
+<p>Подход в целом хорош, но наш фильтр в директори&nbsp;filter_plugins не будет работать в других плейбуках (находящихся в других директориях), если такая необходимость возникнет.</p>
+
+<p>Чтобы решить эту проблему, можно добавить в ansible.cfg путь к filters.py в значение <a href="http://docs.ansible.com/ansible/latest/intro_configuration.html#filter-plugins">переменной&nbsp;filter_plugins.</a></p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+</body>
+</html>
+
+
+
+

@@ -1,0 +1,305 @@
+<html>
+<head>
+    <title>Ansible: передаем json в теле запроса, используя модуль uri</title>
+    <meta name="tags" content="ansible"/>
+    <meta name="date" content="2017-10-14 21:39:41"/>
+    <meta name="authors" content="Ezhvsalate"/>
+    <meta name="category" content="Посты"/>
+    <meta name="summary" content="В этой статье <s>будет рассказана история потерянного дня</s> речь пойдет о том, какими способами можно передать json в теле запроса, используя модуль Uri на Ansible, что часто может потребоваться при обращении к какому-либо REST API.">
+    <meta name="cover" content="images/ansible-peredaem-json-v-tele-zaprosa-ispolzuia-modul-uri.png"/>
+</head>
+<body>
+<h2><a id="ch1" name="ch1">Предыстория вопроса</a></h2>
+<p>Задачка, которая заставила задаться этим вопросом выглядела совсем не сложной: есть ansible playbook-и, которые заказывают виртуальные машины в облаке, накатывают на них необходимое окружение,
+    после чего довольные разработчики и тестировщики идут на получившиеся стенды <s>и ломают их</s> заниматься делом. Но чтобы они наверняка знали куда идти и какое окружение есть на каком стенде
+    (а могут быть разные наборы) так повелось, что создавалась страничка в confluence (<a href="https://ru.atlassian.com/software/confluence">wiki-подобная штука от atalssian</a>). Создавалась она
+    вручную и, естественно, делать это никто особо не хотел и частенько забывал об этом.</p>
+
+<p>Решение напрашивалось давно: идем в гугл, <a href="https://docs.atlassian.com/atlassian-confluence/REST/latest-server/#content">находим документацию по REST API у Confluence</a>, лепим на коленке
+    POST запрос к https://confluencehost/rest/api/content:</p>
+
+<pre>
+<code class="language-json">{
+    "type":"page",
+    "title":"Стенд крутейший: описание",
+     "ancestors": [
+        {
+          "id": "123456789"
+        }
+      ],
+    "space":{
+        "key":"SPACE_NAME"
+    },
+    "body":{
+        "storage":
+        {
+        "value":"&lt;p&gt;Тут крутое описание всего что надо&lt;/p&gt;",
+        "representation":"storage"
+        }
+    }
+}</code></pre>
+
+<p>Отправляем запрос через любой REST-клиент (я использую <a href="https://chrome.google.com/webstore/detail/restlet-client-rest-api-t/aejoelaoggembcahagimdiliamlcdmfm">DHC </a>для Chrome), видим
+    статус код 200, радуемся. Идем в confluence - видим, страничка создалась!</p>
+
+<p>Осталась самая малость - запилить все это в ansible, подставляя переменные в правильный Jinja2 - шаблон.</p>
+
+<p> </p>
+
+<p>Сделаем такой HTML-шаблон будущей странички:</p>
+
+<pre>
+<code>&lt;h2&gt;Назначение стенда&lt;/h2&gt;
+&lt;p&gt;{{work_description}} &lt;/p&gt;
+&lt;p&gt;
+	&lt;strong&gt;Ответственный за стенд&lt;/strong&gt;: {{responsible_for_stand}}&lt;/p&gt;
+&lt;h2&gt;Описание серверов&lt;/h2&gt;
+...
+и еще много букв</code></pre>
+
+<p>Подготовим структуру в ansible:</p>
+
+<pre>
+<code>-  inventory
+-- ...
+-  roles
+-- confluence
+--- create_stand_description_page
+---- tasks
+----- main.yml
+---- templates
+----- stand_description.j2
+-- ...
+- playbook.yml</code></pre>
+
+<p>Добавим вызов нашей новой роли в playbook.yml:</p>
+
+<pre>
+<code>---
+...
+- name: Create confluence page with stand description
+  hosts: localhost
+  gather_facts: no
+  roles:
+    - confluence/create_stand_description_page
+...
+</code></pre>
+
+<p>И пойдем довольные читать <a href="http://docs.ansible.com/ansible/latest/uri_module.html">документацию по модулю uri в ansible</a>, который умеет делать HTTP-запросы.</p>
+
+<p>Видим там такой пример:</p>
+
+<pre>
+<code>- name: Create a JIRA issue
+  uri:
+    url: https://your.jira.example.com/rest/api/2/issue/
+    method: POST
+    user: your_username
+    password: your_pass
+    body: "{{ lookup('file','issue.json') }}"
+    force_basic_auth: yes
+    status_code: 201
+    body_format: json
+</code></pre>
+
+<p>Кажется, то что надо!</p>
+
+<p>Но стоп, у нас HTML-страничка, которую надо передать в JSON-файле. Для этого сначала ее бы надо привести в правильный вид, иначе JSON будет невалидным. Для этого напрашивается использовать
+    какой-нибудь jinja-фильтр, немного гуглим и находим его: он называется неожиданно to_json. Получается, что фильтр надо применить к страничке, в которую на тот момент уже будут подставлены
+    необходимые переменные (т.к. они тоже могут содержать спец. символы).</p>
+
+<p> </p>
+
+<p>Немного подумав,  добавим в templates роли еще один шаблон stand_request.j2:</p>
+
+<pre>
+<code>{
+    "type":"page",
+    "title":"{{page_name}}",
+     "ancestors": [
+        {
+          "id": "{{page_id}}"
+        }
+      ],
+    "space":{
+        "key":"{{space_name}}"
+    },
+    "body":{
+        "storage":
+        {
+        "value":{{rendered_template|to_json}},
+        "representation":"storage"
+        }
+    }
+}</code></pre>
+
+<p>Собираем из всего этого конструкцию:</p>
+
+<pre>
+<code>---
+- set_fact:
+    rendered_template: "{{ lookup('template', '../templates/stand_description.j2') }}"
+
+- name: "Edit template"
+  template:
+    src: "../templates/stand_request.j2"
+    dest: "{{playbook_dir}}/request.json"
+    mode: 0777
+
+- name: Create confluence page with stand description
+  uri:
+    url: https://confluencehost/rest/api/content
+    method: POST
+    user: "{{user}}"
+    password: "{{password}}"
+    body: "{{ lookup('file','{{playbook_dir}}/request.json') }}"
+    force_basic_auth: yes
+    status_code: 200
+    body_format: json
+
+</code></pre>
+
+<p>Ну, можно выдохнуть, теперь все будет хорошо...</p>
+
+<p>При выполнении получаем в файле request.json вполне себе валидный json:</p>
+
+<pre>
+<code>{
+    "type":"page",
+    "title":"TEST",
+    "ancestors":[
+        {
+            "id":"123456"
+        }
+    ],
+    "space":{
+        "key":"KEY"
+    },
+    "body":{
+        "storage":{
+            "value":"&lt;h2&gt;\u041D\u0430\u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435 \u0441\u0442\u0435\u043D\u0434\u0430&lt;\/h2&gt;",
+            "representation":"storage"
+        }
+    }
+}</code></pre>
+
+<p>Плейбук выполнился без ошибок и пора бы уже отчитаться о проделанной работе. Идем в confluence и неожиданно для себя видим:</p>
+
+<p><img alt="" src="/images/2017-10-14_22-28-32.png" style="width: 80%;"/></p>
+
+<p>Копируем запрос из сформированного файла request.json и выполняем точно такой же запрос, но через DHC и не перестаем удивляться, увидев, что все работает как положено:</p>
+
+<p><img alt="" src="/images/2017-10-14_22-32-29.png" style="width: 80%;"/></p>
+
+<p>Часы, потраченные на попытки найти решение в гуглах, стековерфлоу и так далее успеха не принесли, но зато удалось узнать для себя кое-что новое.</p>
+
+<p> </p>
+
+<h2><a id="ch2" name="ch2">Ansible: cпособы передать JSON в теле запроса</a></h2>
+
+<p>Способов таких, как оказалось, есть несколько.</p>
+
+<p>1. Можно описать YAML - конструкцию и в конце указать ansible-у, что ее надо обрабатывать как json.</p>
+
+<pre>
+<code>- uri:
+    url: some_url_here
+    method: POST
+    body:
+      level1:
+        level2string: level2value
+      level1_other: 1
+      level1_bool: false
+      level1_array:
+        - array_item1
+        - array_item2
+    status_code: 200
+    body_format: json
+</code></pre>
+
+<p>На выходе конструкция даст JSON вида:</p>
+
+<pre>
+<code class="language-json">{
+	"level1": {
+		"level2": "level2value"
+	},
+	"level1_number": 1,
+	"level1_bool": false,
+	"level1_array": [
+		"array_item1",
+		"array_item2"
+	]
+}</code></pre>
+
+<p>Для отладки удобно использовать онлайн-конвертер YAML в JSON, например, <a href="https://codebeautify.org/yaml-to-json-xml-csv">тут</a>.</p>
+
+<p>Нужно понимать, что указав  body_format: json, ansible сам добавит в заголовок запроса &quot;Content-Type: application/json&quot;, если он не нужен - его надо переопределить, указав
+    дополнительно HEADER_Content-Type: some_other_type.</p>
+
+<p>2. Можно определить переменную и предоставить jinja возможность сделать из нее json. </p>
+
+<pre>
+<code>vars:
+  json_var:
+    key: value
+    ...
+    body: ' {{json_var|to_json}}'</code></pre>
+
+<p>3. С использованием lookup-плагина, как мы и пытались сделать:</p>
+
+<pre>
+<code>body: "{{ lookup('file','{{playbook_dir}}/request.json') }}"</code></pre>
+
+<p>4. Быстрый путь - использовать YAML<a href="http://www.yaml.org/spec/1.2/spec.html#id2796251"> folded style</a>:</p>
+
+<pre>
+<code>body: &gt;
+  {"items":{"key":"value"}}</code></pre>
+
+<p>5. Дешево и сердито - заэкранировать все что можно</p>
+
+<pre>
+<code>body: "{\"items\":{\"key\":\"value\"}}
+</code></pre>
+
+<h2><a id="ch3" name="ch3">Возвращаясь к истории</a></h2>
+
+<p>А закончилось все в итоге хорошо - использовав первый вариант представления JSON из списка выше.</p>
+
+<p>Playbook получился вот такого вида:</p>
+
+<pre>
+<code>---
+- set_fact:
+    rendered_template: "{{ lookup('template', '../templates/stand_description.j2') }}"
+
+- name: Create confluence page with stand description
+  uri:
+    url: https://confluence.billing.ru/rest/api/content
+    method: POST
+    user: "{{user}}"
+    password: "{{password}}"
+    body:
+      type: page
+      title: "{{stand_name}}"
+      ancestors:
+          - id: "{{parent_page_id}}"
+      space:
+        key: "{{space_key}}"
+      body:
+        storage:
+          value: "{{rendered_template}}"
+          representation: "storage"
+    force_basic_auth: yes
+    status_code: 200
+    body_format: json
+</code></pre>
+
+<p>При таком варианте проблем с кодировками больше не возникало и странички успешно создавались, освобождая меня от лишней работы  :)</p>
+</body>
+</html>
+
+
+
+

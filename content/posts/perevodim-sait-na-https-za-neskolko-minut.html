@@ -1,0 +1,153 @@
+<html>
+<head>
+    <title>Переводим сайт на HTTPS за несколько минут</title>
+    <meta name="tags" content="HTTTPS"/>
+    <meta name="date" content="2017-10-23 08:20:34"/>
+    <meta name="category" content="Посты"/>
+    <meta name="authors" content="Ezhvsalate"/>
+    <meta name="summary" content="HTTPS (HyperText Transfer Protocol Secure) — расширение протокола HTTP для поддержки шифрования в целях повышения безопасности. Основная задача HTTPS - обеспечение безопасности обмена информацией между устройством пользователя и сайтом.
+    Зачем на него переходить? Для сайтов это повышение доверия со стороны пользователей, один из факторов, учитываемых в ранжировании сайта поисковыми системами. С какого-то момента Google обещает помечать сайты, работающие на HTTP в браузере Chrome как небезопасные.">
+    <meta name="cover" content="images/perevodim-sait-na-https-za-neskolko-minut.png"/>
+</head>
+<body>
+<p>HTTPS (HyperText Transfer Protocol Secure) &mdash; расширение протокола HTTP для поддержки шифрования в целях повышения безопасности. Основная задача HTTPS - обеспечение безопасности обмена
+    информацией между устройством пользователя и сайтом.</p>
+
+<p>Зачем на него переходить? Для сайтов это повышение доверия со стороны пользователей, один из факторов, учитываемых в ранжировании сайта поисковыми системами. С какого-то момента Google обещает
+    помечать сайты, работающие на HTTP в браузере Chrome как небезопасные.</p>
+
+<h2><a id="ch1">Теоретическая часть</a></h2>
+
+<p>По сути HTTPS - это расширение протокола HTTP, в котором реализована поддержка шифрования, обеспечивающего криптографическую защиту передаваемых данных. Таким образом обеспечивается защита от
+    снифферских атак (прослушивание данных) и  атак man-in-the-middle (атака посредника - подмена информации во время передачи между клиентом и сервером, осуществленная таким образом, что ни
+    один из них не узнает об этом).</p>
+
+<p>По умолчанию https использует порт 443, HTTP - порт 80. Для того, чтобы сервер мог обрабатывать https-соединения, администратор должен получить и установить сертификат открытого ключа для этого
+    сервера.</p>
+
+<p>Сертификаты бывают трех типов:</p>
+
+<ul>
+    <li>Domain Validation - подтверждают только доменное имя</li>
+    <li>Organisation Validation - подтверждают доменное имя и организацию</li>
+    <li>Extended Validation - сертификаты с расширенной безопасностью</li>
+</ul>
+
+<p>Принцип соединения при переходе клиента на защищенный сертификатом сайт следующий:</p>
+
+<ol>
+    <li>Браузер клиента отправляет запрос к сайту</li>
+    <li>Сайт в ответ посылает копию сертификата</li>
+    <li>Браузер проверяет, что сертификат подлинный, отправляя запрос центру сертификации, выдавшему его</li>
+    <li>Если сертификат подлинные - браузер договаривается с сайтом о секретном ключе, шифрующем данные.</li>
+</ol>
+
+<p>Наша задача будет состоять в том, чтобы получить и установить такой сертификат.</p>
+
+<p>Большинство центров сертификации оказывают платные услуги, но есть варианты. Существует проект <a href="https://letsencrypt.org/">Let&#39;s Encrypt</a>, созданный для того, чтобы большая часть
+    сайтов перешла на HTTPS. Сервис спонсируют крупные организации (Mozilla Foundation,  Cisco Systems и др.), для конечных пользователей получение сертификата реализовано бесплатно и максимально
+    просто. Центр сертификации Let&#39;s Encrypt выдаёт сертификаты типа &laquo;Domain Validation&raquo; со сроком действия в 90 дней.</p>
+
+<p>Попробуем использовать это на практике.</p>
+
+<h2><a id="ch2" name="ch2">Практическая часть</a></h2>
+
+<p>Идем на сайт <a href="https://certbot.eff.org/">certbot</a> - клиента для Let&#39;s Encrypt.</p>
+
+<p>Там нам нужно выбрать используемое ПО (nginx, haproxy, plesk, apache) и операционную систему (множество вариантов UNIX-систем). В моем случае выбираю nginx и CentOS/RHEL 7.</p>
+
+<p>Выполняем предлагаемые команды:</p>
+
+<pre>
+<code class="language-bash">yum -y install yum-utils
+yum-config-manager --enable rhui-REGION-rhel-server-extras rhui-REGION-rhel-server-optional
+sudo yum install certbot-nginx</code></pre>
+
+<p>Дожидаемся окончания установки и выбираем один из вариантов. Если мы хотим, чтобы certbot сам конфигурировал nginx, выполняем команду:</p>
+
+<pre>
+<code class="language-bash">sudo certbot --nginx</code></pre>
+
+<p>Если хотим конфигурировать вручную - добавляем опцию certonly.</p>
+
+<pre>
+<code class="language-bash">sudo certbot --nginx certonly</code></pre>
+
+<p>Выбираю первый вариант, пусть конфигурирует бот. Вводим запрашиваемую информацию, в том числе выбираем перенаправлять ли весь HTTP-трафик на HTTPS.</p>
+
+<p>Бот пытается получить сертификат для домена и....ошибка:</p>
+
+<pre>
+<code>Obtaining a new certificate
+Performing the following challenges:
+tls-sni-01 challenge for ezhvsalate.ru
+Waiting for verification...
+Cleaning up challenges
+Failed authorization procedure. ezhvsalate.ru (tls-sni-01): urn:acme:error:connection :: The server could not connect to the client to verify the domain :: Error getting validation data
+
+IMPORTANT NOTES:
+ - The following errors were reported by the server:
+
+   Domain: ezhvsalate.ru
+   Type:   connection
+   Detail: Error getting validation data
+</code></pre>
+
+<p>Ругаемся про себя и идем открывать 443 порт на фаерволле.</p>
+
+<pre>
+<code>firewall-cmd --zone=public --add-port=443/tcp --permanent
+firewall-cmd --reload</code></pre>
+
+<p>Пробуем еще раз - ошибка ушла. Следующая задача - настроить автоматическое обновление сертификатов.</p>
+
+<p>Сначала запускаем тестовую команду:</p>
+
+<pre>
+<code class="language-bash">sudo certbot renew --dry-run</code></pre>
+
+<p>Вроде как все хорошо: </p>
+
+<pre>
+<code>Processing /etc/letsencrypt/renewal/ezhvsalate.ru.conf
+-------------------------------------------------------------------------------
+Cert not due for renewal, but simulating renewal for dry run
+Plugins selected: Authenticator nginx, Installer nginx
+Starting new HTTPS connection (1): acme-staging.api.letsencrypt.org
+Renewing an existing certificate
+Performing the following challenges:
+tls-sni-01 challenge for ezhvsalate.ru
+Waiting for verification...
+Cleaning up challenges</code></pre>
+
+<div contenteditable="false" tabindex="-1"> </div>
+
+<p>Добавляем задачу в cron. </p>
+
+<pre>
+<code class="language-bash">sudo vi /etc/crontab</code></pre>
+
+<p>Добавляем в конец файла строки (на сайте certbot рекомендовано обновление дважды в сутки):</p>
+
+<pre>
+<code>0 4  *  *  *  * user certbot renew --quiet
+0 16 *  *  *  * user certbot renew --quiet
+</code></pre>
+
+<p>Перезапускаем сервис cron:</p>
+
+<pre>
+<code>sudo systemctl restart crond.service</code></pre>
+
+<p>В общем-то и все: идем на сайт и видим приятные изменения в адресной строке:</p>
+
+<p><img alt="" src="/media/uploads/2017/10/23/protected_https.png" style="width: 368px; height: 33px;"/></p>
+
+<p> </p>
+
+</body>
+</html>
+
+
+
+

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<main>
+    <section id="home">
+        <ul>
+            {% for article in articles_page.object_list %}
+            <li>
+                <h2><a href="{{ SITEURL }}/{{ article.url }}" rel="bookmark"
+                       title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a></h2>
+                <aside>
+                    <time datetime="{{ article.date }}">{{ article.date|strftime('%d %b %Y') }}</time>
+                    {% if article.readtime %}
+                     &nbsp;&nbsp; Время прочтения: {{ article.readtime.minutes }} мин
+                    {% endif %}
+                </aside>
+                <p>
+                    {{ article.summary }}
+                     {% if article.cover %}
+                     <img src="{{article.cover}}" style=" margin: 10px 10%; width:80%; box-shadow: 0 10px 10px #aaaaaa;">
+                    {% endif %}
+                    <br/>
+                    <a style="float: right" href="{{ SITEURL }}/{{ article.url }}"><em>Читать дальше...</em></a>
+                </p>
+            </li>
+            {% endfor %}
+        </ul>
+        {% if articles_page.has_other_pages() %}
+        {% include 'pagination.html' %}
+        {% endif %}
+    </section>
+</main>
+{% endblock content %}
