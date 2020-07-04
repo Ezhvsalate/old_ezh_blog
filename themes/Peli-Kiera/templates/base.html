@@ -31,7 +31,7 @@
 {% include 'github.html' %}
 <div id="container">
     <header>
-        <h1 style="margin-bottom: 0"><a href="{{ SITEURL }}/"><img src="/theme/images/logo3.svg" style="width: 120px; box-shadow: None;" alt="logo"/> {{ SITENAME }}</a></h1>
+        <h1 style="margin-bottom: 0"><a href="{{ SITEURL }}/"><img src="{{ SITEURL }}/{{ THEME_STATIC_DIR }}/images/logo3.svg" style="width: 120px; box-shadow: None;" alt="logo"/> {{ SITENAME }}</a></h1>
         {% if SOCIAL or FEED_ALL_ATOM or FEED_ALL_RSS %}
         <ul class="social-media">
             {% for name, link in SOCIAL %}

@@ -4,12 +4,13 @@ from __future__ import unicode_literals
 
 AUTHOR = 'ezhvsalate'
 SITENAME = 'Записная книжка ежа'
-SITEURL = ''
+SITEURL = 'https://ezhvsalate.github.io/old_ezh_blog/'
 THEME = 'themes/Peli-Kiera'
 PLUGIN_PATHS = ['pelican-plugins']
 PLUGINS = ['readtime', 'neighbors']
 PATH = 'content'
 
+RELATIVE_URLS = True
 ARTICLE_URL = 'posts/{slug}'
 ARTICLE_SAVE_AS = 'posts/{slug}.html'
 PAGE_URL = '{slug}'
@@ -32,9 +33,3 @@ DEFAULT_PAGINATION = False
 SOCIAL = (
     ('github', 'https://github.com/Ezhvsalate'),
 )
-
-
-DEFAULT_PAGINATION = False
-
-# Uncomment following line if you want document-relative URLs when developing
-#RELATIVE_URLS = True
